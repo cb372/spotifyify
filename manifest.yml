@@ -1,0 +1,10 @@
+artists:
+- albums:
+  - Indestructible
+  name: Rancid
+- albums:
+  - Revolver
+  - Sgt. Pepper
+  name: The Beatles
+- albums: []
+  name: テスト

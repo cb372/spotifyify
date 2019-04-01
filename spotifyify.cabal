@@ -24,6 +24,4 @@ executable spotifyify
                        path-io,
                        optparse-applicative,
                        yaml,
-                       aeson,
-                       bytestring,
-                       utf8-string
+                       aeson

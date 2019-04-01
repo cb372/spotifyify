@@ -1,14 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Spotifyify.Manifest where
 
 import System.FilePath (dropTrailingPathSeparator)
-import Path
-import Path.IO
-import GHC.Generics
+import Path (Path, Abs, Dir, dirname, toFilePath)
+import Path.IO (listDir)
+import GHC.Generics (Generic)
 import Data.Yaml (ToJSON, toEncoding, encode, encodeFile)
 import Data.Aeson.Types (genericToEncoding, defaultOptions)
-import qualified Data.ByteString as B
-import qualified Codec.Binary.UTF8.String as U
 
 type Album = String
 data Artist = Artist { name :: String, albums :: [Album] } deriving Generic
@@ -20,23 +19,38 @@ instance ToJSON Artist where
 instance ToJSON Manifest where
   toEncoding = genericToEncoding defaultOptions
 
-instance Show Manifest where
-  show = U.decode . B.unpack . encode
+instance Show Artist where
+  show (Artist name albums) = name ++ " (" ++ show (length albums) ++ " albums)"
 
-buildManifest :: Path b Dir -> IO (Manifest)
+buildManifest :: Path Abs Dir -> IO (Manifest)
 buildManifest rootDir = do
-  (dirs, files) <- listDirRel rootDir
-  artists <- traverse (\d -> withCurrentDir rootDir (buildArtist d)) dirs
-  pure $ Manifest artists
+  (dirs, files) <- listDir rootDir
+  artists <- traverse processArtistDir dirs
+  let artistsWithAlbums = filter hasAtLeastOneAlbum artists
+  pure $ Manifest artistsWithAlbums
 
-buildArtist :: Path Rel Dir -> IO (Artist)
-buildArtist artistDir = do
-  (dirs, files) <- listDirRel artistDir
+processArtistDir :: Path Abs Dir -> IO (Artist)
+processArtistDir artistDir = do
+  let artistName = dirToName artistDir
+  (dirs, files) <- listDir artistDir
   let albums = fmap dirToName dirs
-  pure $ Artist (dirToName artistDir) albums
+  let artist = Artist artistName albums
+  putStrLn $ "Processed artist: " ++ show artist
+  pure artist
 
-dirToName :: Path Rel Dir -> String
-dirToName = dropTrailingPathSeparator . toFilePath
+dirToName :: Path Abs Dir -> String
+dirToName = dropTrailingPathSeparator . toFilePath . dirname
+
+countArtists :: Manifest -> Int
+countArtists (Manifest artists) = length artists
+
+countAlbums :: Manifest -> Int
+countAlbums (Manifest artists) = sum $ fmap albumsForArtist artists
+  where albumsForArtist Artist{albums} = length albums
+
+hasAtLeastOneAlbum :: Artist -> Bool
+hasAtLeastOneAlbum Artist{albums = []} = False
+hasAtLeastOneAlbum Artist{} = True
 
 writeManifest :: Manifest -> FilePath -> IO ()
 writeManifest manifest outputFile = encodeFile outputFile manifest

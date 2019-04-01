@@ -1,6 +1,7 @@
 module Main where
 
 import Path (parseRelDir)
+import Path.IO (resolveDir')
 import Options.Applicative
 import Data.Semigroup ((<>))
 import Spotifyify.Manifest
@@ -11,8 +12,7 @@ data Cmd
 
 buildManifestParser :: Parser Cmd
 buildManifestParser = BuildManifest <$>
-  strOption (
-    long "input-dir" <> short 'i' <> metavar "DIRECTORY" <> help "Root directory to search")
+  strOption (long "input-dir" <> short 'i' <> metavar "DIRECTORY" <> help "Root directory to search")
   <*>
   strOption (long "output-file" <> short 'o' <> metavar "FILE" <> value "manifest.yml" <> help "Output file")
 
@@ -37,10 +37,9 @@ main = run =<< execParser opts
 
 run :: Cmd -> IO ()
 run (BuildManifest rootDir outputFile) = do
-  -- TODO normalise the rootDir path
-  rootPath <- parseRelDir rootDir
-  manifest <- buildManifest rootPath
-  -- TODO print stats about the manifest before writing to file
+  absRootDir <- resolveDir' rootDir
+  manifest <- buildManifest absRootDir
+  putStrLn $ "Found " ++ show (countAlbums manifest) ++ " albums by " ++ show (countArtists manifest) ++ " artists"
   writeManifest manifest outputFile
   putStrLn $ "Wrote manifest to file " ++ outputFile
 run (Import manifestFile) = putStrLn "Importing into Spotify..."

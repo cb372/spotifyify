@@ -28,7 +28,7 @@ initOAuth2Data = do
   clientSecret <- T.pack <$> getEnv "SPOTIFY_CLIENT_SECRET"
   authorizationUrl <- toUri "https://accounts.spotify.com/authorize"
   tokenUrl <- toUri "https://accounts.spotify.com/api/token"
-  callbackUrl <- toUri "http://localhost:12345/callback"
+  callbackUrl <- toUri "https://cb372.github.io/spotifyify/callback.html"
   return $ OAuth2 clientId clientSecret authorizationUrl tokenUrl (Just callbackUrl)
   where
     toUri :: ByteString -> IO URI

@@ -1,13 +1,16 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
+
 module Spotifyify.Manifest where
 
-import System.FilePath (dropTrailingPathSeparator)
-import Path (Path, Abs, Dir, dirname, toFilePath)
-import Path.IO (listDir)
 import GHC.Generics (Generic)
-import Data.Yaml (ToJSON, toEncoding, encode, encodeFile)
+import qualified Data.Set as S (fromList, notMember)
+import Data.Yaml (ToJSON, FromJSON, toEncoding, encode, encodeFile, decodeFileThrow)
 import Data.Aeson.Types (genericToEncoding, defaultOptions)
+import System.FilePath (dropTrailingPathSeparator)
+import Path (Path, Abs, Dir, File, dirname, toFilePath)
+import Path.IO (listDir)
+import Spotifyify.Log (LogEntry, artist)
 
 type Album = String
 data Artist = Artist { name :: String, albums :: [Album] } deriving Generic
@@ -18,6 +21,9 @@ instance ToJSON Artist where
 
 instance ToJSON Manifest where
   toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON Artist
+instance FromJSON Manifest
 
 instance Show Artist where
   show (Artist name albums) = name ++ " (" ++ show (length albums) ++ " albums)"
@@ -52,5 +58,17 @@ hasAtLeastOneAlbum :: Artist -> Bool
 hasAtLeastOneAlbum Artist{albums = []} = False
 hasAtLeastOneAlbum Artist{} = True
 
-writeManifest :: Manifest -> FilePath -> IO ()
-writeManifest manifest outputFile = encodeFile outputFile manifest
+writeManifest :: Manifest -> Path Abs File -> IO ()
+writeManifest manifest outputPath = encodeFile (toFilePath outputPath) manifest
+
+readManifest :: Path Abs File -> IO Manifest
+readManifest inputPath = decodeFileThrow (toFilePath inputPath)
+
+-- Filter out any artists that are found in the logs
+filterArtists :: Manifest -> [LogEntry] -> Manifest
+filterArtists (Manifest artists) logs = Manifest filtered
+  where
+    filtered = filter nameNotInLogs artists
+    nameNotInLogs artist = not $ elem (name artist) artistNamesInLogs
+    artistNamesInLogs = S.fromList $ artist <$> logs
+

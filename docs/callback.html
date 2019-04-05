@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Spotifyify</title>
+</head>
+
+<body>
+  <p>Here is your authorization code:</p>
+  <pre id="code"></pre>
+  <p>Copy this and paste it into stdin.</p>
+  <style>
+    #code {
+      font-size: large;
+      -webkit-user-select: all;
+      user-select: all;
+    }
+  </style>
+  <script>
+    document.getElementById("code").innerText = /code=([^&]+)/.exec(location.search)[1];
+  </script>
+</body>
+
+</html>

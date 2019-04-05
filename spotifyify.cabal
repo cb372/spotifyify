@@ -33,6 +33,7 @@ executable spotifyify
                        yaml,
                        aeson,
                        http-client,
+                       http-client-tls,
                        hoauth2,
                        uri-bytestring,
                        open-browser

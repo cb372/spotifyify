@@ -14,8 +14,10 @@ import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Encoding (decodeUtf8)
 import GHC.Generics (Generic)
-import Network.HTTP.Client (newManager, defaultManagerSettings)
-import Network.OAuth.OAuth2 (OAuth2(..), OAuth2Token, authorizationUrl)
+import Network.HTTP.Client (newManager)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
+import Network.OAuth.OAuth2 (OAuth2(..), OAuth2Token, ExchangeToken(..), authorizationUrl, appendQueryParams)
+import Network.OAuth.OAuth2.HttpClient (fetchAccessToken)
 import Network.OAuth.OAuth2.TokenRequest (Errors)
 import URI.ByteString (URI, parseURI, strictURIParserOptions, serializeURIRef')
 import Web.Browser (openBrowser)
@@ -30,9 +32,19 @@ initOAuth2Data = do
   return $ OAuth2 clientId clientSecret authorizationUrl tokenUrl (Just callbackUrl)
   where
     toUri :: ByteString -> IO URI
-    toUri bytestring = either (fail . show) return $ parseURI strictURIParserOptions bytestring
+    toUri bytestring = liftEither $ parseURI strictURIParserOptions bytestring
 
 authenticate :: OAuth2 -> IO OAuth2Token
 authenticate oauth2Data = do
-  openBrowser (T.unpack . decodeUtf8 . serializeURIRef' $ authorizationUrl oauth2Data)
-  fail "nope"
+  openBrowser (T.unpack . decodeUtf8 $ serializeURIRef' authorizationUrlWithScope)
+  putStrLn "Type your authorization code and press return:"
+  code <- getLine
+  mgr <- newManager tlsManagerSettings
+  errorOrToken <- fetchAccessToken mgr oauth2Data (ExchangeToken $ T.pack code)
+  liftEither errorOrToken
+    where
+      authorizationUrlWithScope = appendQueryParams [("scope" :: ByteString, scope)] (authorizationUrl oauth2Data)
+      scope = "user-library-read user-library-modify user-follow-read user-follow-modify" :: ByteString
+
+liftEither :: Show l => Either l r -> IO r
+liftEither = either (fail . show) return

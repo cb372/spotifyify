@@ -21,6 +21,7 @@ performImport :: Manifest -> Handle -> IO ()
 performImport (Manifest artists) logHandle = do
   oauth2Data <- initOAuth2Data
   oauth2Token <- authenticate oauth2Data
+  putStrLn $ show oauth2Token
   sequence $ (importArtist logHandle) <$> artists
   return ()
 

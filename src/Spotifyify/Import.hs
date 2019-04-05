@@ -15,9 +15,12 @@ import Path (Path, Abs, File, dirname, toFilePath)
 import Path.IO (doesFileExist)
 import Spotifyify.Manifest (Manifest(..), Artist(..))
 import Spotifyify.Log (LogEntry(..), writeEntry)
+import Spotifyify.Auth (initOAuth2Data, authenticate)
 
 performImport :: Manifest -> Handle -> IO ()
 performImport (Manifest artists) logHandle = do
+  oauth2Data <- initOAuth2Data
+  oauth2Token <- authenticate oauth2Data
   sequence $ (importArtist logHandle) <$> artists
   return ()
 

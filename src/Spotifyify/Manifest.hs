@@ -69,6 +69,6 @@ filterArtists :: Manifest -> [LogEntry] -> Manifest
 filterArtists (Manifest artists) logs = Manifest filtered
   where
     filtered = filter nameNotInLogs artists
-    nameNotInLogs artist = not $ elem (name artist) artistNamesInLogs
+    nameNotInLogs artist = S.notMember (name artist) artistNamesInLogs
     artistNamesInLogs = S.fromList $ artist <$> logs
 

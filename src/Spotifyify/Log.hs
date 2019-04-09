@@ -2,7 +2,7 @@
 
 module Spotifyify.Log where
 
-import System.IO (Handle, hPutStrLn, readFile)
+import System.IO (Handle, hPutStrLn, readFile, hFlush)
 import Data.Aeson (FromJSON, ToJSON, toJSON, decodeStrict)
 import Data.Aeson.Text (encodeToTextBuilder)
 import Data.Maybe (catMaybes)
@@ -15,7 +15,11 @@ import GHC.Generics (Generic)
 import Path (Path, Abs, File, dirname, toFilePath)
 import Path.IO (doesFileExist)
 
-data LogEntry = LogEntry { artist :: String, albumsImported :: Int } deriving (Eq, Ord, Generic)
+data LogEntry = LogEntry {
+  artist :: Text,
+  followed :: Bool,
+  albumsImported :: Int
+} deriving (Eq, Ord, Generic)
 
 instance ToJSON LogEntry
 instance FromJSON LogEntry
@@ -35,7 +39,9 @@ readLogFile' path = do
   return $ catMaybes $ fromString <$> ls
 
 writeEntry :: Handle -> LogEntry -> IO ()
-writeEntry h entry = hPutStrLn h $ toString entry
+writeEntry h entry = do
+  hPutStrLn h $ toString entry
+  hFlush h
 
 toString :: ToJSON a => a -> String
 toString = unpack . toStrict . toLazyText . encodeToTextBuilder . toJSON

@@ -19,6 +19,7 @@ executable spotifyify
   other-modules:       Spotifyify.Auth,
                        Spotifyify.Manifest,
                        Spotifyify.Log,
+                       Spotifyify.API,
                        Spotifyify.Import
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5,
@@ -34,6 +35,7 @@ executable spotifyify
                        aeson,
                        http-client,
                        http-client-tls,
+                       http-conduit,
                        hoauth2,
                        uri-bytestring,
                        open-browser

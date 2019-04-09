@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Spotifyify.Manifest where
 
 import GHC.Generics (Generic)
 import qualified Data.Set as S (fromList, notMember)
+import Data.Text (Text, unpack, pack)
 import Data.Yaml (ToJSON, FromJSON, toEncoding, encode, encodeFile, decodeFileThrow)
 import Data.Aeson.Types (genericToEncoding, defaultOptions)
 import System.FilePath (dropTrailingPathSeparator)
@@ -12,8 +14,8 @@ import Path (Path, Abs, Dir, File, dirname, toFilePath)
 import Path.IO (listDir)
 import Spotifyify.Log (LogEntry, artist)
 
-type Album = String
-data Artist = Artist { name :: String, albums :: [Album] } deriving Generic
+type Album = Text
+data Artist = Artist { name :: Text, albums :: [Album] } deriving Generic
 data Manifest = Manifest { artists :: [Artist] } deriving Generic
 
 instance ToJSON Artist where
@@ -26,7 +28,9 @@ instance FromJSON Artist
 instance FromJSON Manifest
 
 instance Show Artist where
-  show (Artist name albums) = name ++ " (" ++ show (length albums) ++ " albums)"
+  show (Artist name albums) = unpack $ name <> " (" <> albumCount <> " albums)"
+    where
+      albumCount = pack $ show (length albums)
 
 buildManifest :: Path Abs Dir -> IO (Manifest)
 buildManifest rootDir = do
@@ -44,8 +48,8 @@ processArtistDir artistDir = do
   putStrLn $ "Processed artist: " ++ show artist
   pure artist
 
-dirToName :: Path Abs Dir -> String
-dirToName = dropTrailingPathSeparator . toFilePath . dirname
+dirToName :: Path Abs Dir -> Text
+dirToName = pack . dropTrailingPathSeparator . toFilePath . dirname
 
 countArtists :: Manifest -> Int
 countArtists (Manifest artists) = length artists

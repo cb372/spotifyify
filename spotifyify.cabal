@@ -36,6 +36,7 @@ executable spotifyify
                        http-client,
                        http-client-tls,
                        http-conduit,
+                       http-types,
                        hoauth2,
                        uri-bytestring,
                        open-browser

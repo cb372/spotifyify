@@ -1,5 +1,6 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module Spotifyify.API where
 
@@ -8,7 +9,7 @@ import           Data.Aeson                (FromJSON, ToJSON, decodeStrict,
                                             toJSON)
 import           Data.ByteString.Char8     (pack, readInt)
 import           Data.Maybe                (fromMaybe, listToMaybe)
-import           Data.Text                 (Text, unwords)
+import           Data.Text                 (Text, intercalate, unpack, unwords)
 import           Data.Text.Encoding        (encodeUtf8)
 import           GHC.Generics              (Generic)
 import           Network.HTTP.Simple
@@ -17,11 +18,13 @@ import           Network.OAuth.OAuth2      (OAuth2Token, accessToken, atoken)
 import           Prelude                   hiding (id, unwords)
 
 data Artist = Artist
-  { id     :: Text
-  , uri    :: Text
-  , name   :: Text
-  , genres :: [Text]
+  { id   :: Text
+  , name :: Text
   } deriving (Show, Generic)
+
+artistId Artist {id = x} = x
+
+artistName Artist {name = x} = x
 
 data Artists = Artists
   { items  :: [Artist]
@@ -34,11 +37,28 @@ data ArtistSearchResult = ArtistSearchResult
   { artists :: Artists
   } deriving (Show, Generic)
 
+data Album = Album
+  { id   :: Text
+  , name :: Text
+  } deriving (Show, Generic)
+
+albumId Album {id = x} = x
+
+albumName Album {name = x} = x
+
+data ArtistAlbumsResult = ArtistAlbumsResult
+  { items :: [Album]
+  } deriving (Show, Generic)
+
 instance FromJSON Artist
 
 instance FromJSON Artists
 
 instance FromJSON ArtistSearchResult
+
+instance FromJSON Album
+
+instance FromJSON ArtistAlbumsResult
 
 searchArtists :: Text -> Int -> OAuth2Token -> IO ArtistSearchResult
 searchArtists query offset = sendRequest request
@@ -53,12 +73,34 @@ searchArtists query offset = sendRequest request
     request = addQueryParams <$> request'
 
 followArtist :: Artist -> OAuth2Token -> IO ()
-followArtist artist = fireAndForget request
+followArtist Artist {id = artistId} = fireAndForget request
   where
     request' = parseRequest "PUT https://api.spotify.com/v1/me/following"
     addQueryParams =
       setRequestQueryString
-        [("ids", Just $ encodeUtf8 (id artist)), ("type", Just "artist")]
+        [("ids", Just (encodeUtf8 artistId)), ("type", Just "artist")]
+    request = addQueryParams <$> request'
+
+getArtistAlbums :: Artist -> OAuth2Token -> IO [Album]
+getArtistAlbums Artist {id = artistId} oauth =
+  getItems <$> sendRequest request oauth
+  where
+    request' =
+      parseRequest $
+      "https://api.spotify.com/v1/artists/" ++ unpack artistId ++ "/albums"
+    addQueryParams =
+      setRequestQueryString
+        [("include_groups", Just "album"), ("limit", Just "50")]
+    request = addQueryParams <$> request'
+    getItems :: ArtistAlbumsResult -> [Album]
+    getItems = items
+
+saveAlbums :: [Album] -> OAuth2Token -> IO ()
+saveAlbums albums = fireAndForget request
+  where
+    request' = parseRequest "PUT https://api.spotify.com/v1/me/albums"
+    addQueryParams = setRequestQueryString [("ids", Just (encodeUtf8 albumIds))]
+    albumIds = intercalate "," (albumId <$> albums)
     request = addQueryParams <$> request'
 
 fireAndForget :: IO Request -> OAuth2Token -> IO ()

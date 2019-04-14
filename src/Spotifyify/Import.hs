@@ -5,8 +5,11 @@ module Spotifyify.Import where
 import           Data.List            (find)
 import           Data.Text            (Text, replace, strip, toLower, unpack)
 import           Network.OAuth.OAuth2 (OAuth2Token)
-import qualified Spotifyify.API       as API (Artist, ArtistSearchResult (..),
-                                              Artists (..), followArtist, name,
+import qualified Spotifyify.API       as API (Album (..), Artist (..),
+                                              ArtistSearchResult (..),
+                                              Artists (..), albumName,
+                                              artistName, followArtist,
+                                              getArtistAlbums, saveAlbums,
                                               searchArtists)
 import           Spotifyify.Auth      (authenticate, initOAuth2Data)
 import           Spotifyify.Log       (LogEntry (..), writeEntry)
@@ -23,12 +26,15 @@ importArtist :: OAuth2Token -> Handle -> M.Artist -> IO ()
 importArtist oauth logHandle artist@(M.Artist name albums) = do
   result <- findArtist artist oauth
   case result of
-    Just a -> do
-      putStrLn $ "Found artist: " ++ unpack (API.name a)
-      API.followArtist a oauth
-      putStrLn $ "Followed " ++ unpack (API.name a)
-      -- TODO save albums
-      writeEntry logHandle (LogEntry name True (length albums))
+    Just apiArtist -> do
+      let artistName = unpack (API.artistName apiArtist)
+      putStrLn $ "Found artist: " ++ artistName
+      API.followArtist apiArtist oauth
+      putStrLn $ "Followed " ++ artistName
+      savedAlbums <- saveAlbums apiArtist albums oauth
+      putStrLn $
+        "Saved " ++ show (length savedAlbums) ++ " albums by " ++ artistName
+      writeEntry logHandle (LogEntry name True (length savedAlbums))
     Nothing -> do
       putStrLn $ "Could not find artist in Spotify: " ++ unpack name
       writeEntry logHandle (LogEntry name False 0)
@@ -57,9 +63,22 @@ findArtist artist oauth = searchFromOffset 0
         else searchFromOffset (offset + pageSize) -- recurse
 
 matchesArtistName :: M.Artist -> API.Artist -> Bool
-matchesArtistName x y = normalise (M.name x) == normalise (API.name y)
+matchesArtistName (M.Artist name _) (API.Artist _ name') =
+  normalise name == normalise name'
 
 normalise :: Text -> Text
 normalise = strip . (replace "_" ".") . toLower
+
+saveAlbums :: API.Artist -> [Text] -> OAuth2Token -> IO [API.Album]
+saveAlbums artist albumNames oauth = do
+  apiAlbums <- API.getArtistAlbums artist oauth
+  let albumsToSave = filter shouldSave apiAlbums
+  API.saveAlbums albumsToSave oauth
+  return albumsToSave
+  where
+    shouldSave album =
+      (normalise $ API.albumName album) `elem` normalisedAlbumNames
+    normalisedAlbumNames = normalise <$> albumNames
+
 pageSize :: Int
 pageSize = 20

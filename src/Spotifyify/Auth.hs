@@ -1,6 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Spotifyify.Auth where
+{-|
+  Authentication for the Spotify API using OAuth 2.0
+-}
+module Spotifyify.Auth
+  ( initOAuth2Data
+  , authenticate
+  ) where
 
 import           Data.Aeson                        (FromJSON, ToJSON,
                                                     decodeStrict, toJSON)

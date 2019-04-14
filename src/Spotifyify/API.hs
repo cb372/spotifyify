@@ -2,7 +2,20 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings     #-}
 
-module Spotifyify.API where
+{-|
+  Client and models for the Spotify API
+-}
+module Spotifyify.API
+  ( Artist(..)
+  , Artists(..)
+  , Album(..)
+  , searchArtists
+  , getArtistAlbums
+  , followArtist
+  , saveAlbums
+  , albumName
+  , artistName
+  ) where
 
 import           Control.Concurrent        (threadDelay)
 import           Data.Aeson                (FromJSON, ToJSON, decodeStrict,
@@ -60,8 +73,13 @@ instance FromJSON Album
 
 instance FromJSON ArtistAlbumsResult
 
-searchArtists :: Text -> Int -> OAuth2Token -> IO ArtistSearchResult
-searchArtists query offset = sendRequest request
+-- |Search for artist by name
+searchArtists ::
+     Text -- ^ artist name to search for
+  -> Int -- ^ offset to start at
+  -> OAuth2Token -- ^ authentication token
+  -> IO Artists
+searchArtists query offset oauth = artists <$> sendRequest request oauth
   where
     request' = parseRequest "https://api.spotify.com/v1/search"
     addQueryParams =
@@ -72,6 +90,7 @@ searchArtists query offset = sendRequest request
         ]
     request = addQueryParams <$> request'
 
+-- |Follow the given artist on Spotify
 followArtist :: Artist -> OAuth2Token -> IO ()
 followArtist Artist {id = artistId} = fireAndForget request
   where
@@ -81,6 +100,7 @@ followArtist Artist {id = artistId} = fireAndForget request
         [("ids", Just (encodeUtf8 artistId)), ("type", Just "artist")]
     request = addQueryParams <$> request'
 
+-- |Get all (actually the first 50) albums by the given artist
 getArtistAlbums :: Artist -> OAuth2Token -> IO [Album]
 getArtistAlbums Artist {id = artistId} oauth =
   getItems <$> sendRequest request oauth
@@ -95,6 +115,7 @@ getArtistAlbums Artist {id = artistId} oauth =
     getItems :: ArtistAlbumsResult -> [Album]
     getItems = items
 
+-- |Save the given albums to your Spotify library
 saveAlbums :: [Album] -> OAuth2Token -> IO ()
 saveAlbums albums = fireAndForget request
   where

@@ -1,6 +1,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Spotifyify.Log where
+{-|
+  A structured log file containing information about which artists were
+  imported into Spotify.
+-}
+module Spotifyify.Log
+  ( LogEntry(..)
+  , readLogFile
+  , writeEntry
+  ) where
 
 import           Data.Aeson             (FromJSON, ToJSON, decodeStrict, toJSON)
 import           Data.Aeson.Text        (encodeToTextBuilder)

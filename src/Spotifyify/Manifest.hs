@@ -25,7 +25,16 @@
   TODO we could improve on this by attempting to read IDv3 tags from files
   inside the directories.
 -}
-module Spotifyify.Manifest where
+module Spotifyify.Manifest
+  ( Manifest(..)
+  , Artist(..)
+  , buildManifest
+  , readManifest
+  , writeManifest
+  , countAlbums
+  , countArtists
+  , filterArtists
+  ) where
 
 import           Data.Aeson.Types (defaultOptions, genericToEncoding)
 import qualified Data.Set         as S (fromList, notMember)
@@ -35,7 +44,7 @@ import           Data.Yaml        (FromJSON, ToJSON, decodeFileThrow, encode,
 import           GHC.Generics     (Generic)
 import           Path             (Abs, Dir, File, Path, dirname, toFilePath)
 import           Path.IO          (listDir)
-import           Spotifyify.Log   (LogEntry, artist, followed)
+import           Spotifyify.Log   (LogEntry (..))
 import           System.FilePath  (dropTrailingPathSeparator)
 
 type Album = Text
@@ -64,6 +73,7 @@ instance Show Artist where
     where
       albumCount = pack $ show (length albums)
 
+-- |Build a manifest describing the artists and albums in the given directory.
 buildManifest :: Path Abs Dir -> IO Manifest
 buildManifest rootDir = do
   (dirs, files) <- listDir rootDir
@@ -95,13 +105,15 @@ hasAtLeastOneAlbum :: Artist -> Bool
 hasAtLeastOneAlbum Artist {albums = []} = False
 hasAtLeastOneAlbum Artist {}            = True
 
+-- |Write the given manifest to a file as YAML
 writeManifest :: Manifest -> Path Abs File -> IO ()
 writeManifest manifest outputPath = encodeFile (toFilePath outputPath) manifest
 
+-- |Read a manifest from the given YAML file
 readManifest :: Path Abs File -> IO Manifest
 readManifest inputPath = decodeFileThrow (toFilePath inputPath)
 
--- Filter out any artists that are found in the logs and have already been followed
+-- |Filter out any artists that are found in the logs and have already been followed
 filterArtists :: Manifest -> [LogEntry] -> Manifest
 filterArtists (Manifest artists) logs = Manifest filtered
   where

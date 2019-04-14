@@ -12,7 +12,7 @@ import           Data.Yaml        (FromJSON, ToJSON, decodeFileThrow, encode,
 import           GHC.Generics     (Generic)
 import           Path             (Abs, Dir, File, Path, dirname, toFilePath)
 import           Path.IO          (listDir)
-import           Spotifyify.Log   (LogEntry, artist)
+import           Spotifyify.Log   (LogEntry, artist, followed)
 import           System.FilePath  (dropTrailingPathSeparator)
 
 type Album = Text
@@ -78,10 +78,11 @@ writeManifest manifest outputPath = encodeFile (toFilePath outputPath) manifest
 readManifest :: Path Abs File -> IO Manifest
 readManifest inputPath = decodeFileThrow (toFilePath inputPath)
 
--- Filter out any artists that are found in the logs
+-- Filter out any artists that are found in the logs and have already been followed
 filterArtists :: Manifest -> [LogEntry] -> Manifest
 filterArtists (Manifest artists) logs = Manifest filtered
   where
     filtered = filter nameNotInLogs artists
-    nameNotInLogs artist = S.notMember (name artist) artistNamesInLogs
-    artistNamesInLogs = S.fromList $ artist <$> logs
+    nameNotInLogs artist = S.notMember (name artist) alreadyFollowedArtists
+    alreadyFollowedArtists = S.fromList $ artist <$> alreadyFollowedLogs
+    alreadyFollowedLogs = followed `filter` logs

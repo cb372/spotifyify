@@ -1,24 +1,26 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Spotifyify.Import where
 
 import           Data.List            (find)
-import           Data.Text            (Text, unpack)
+import           Data.Text            (Text, replace, strip, toLower, unpack)
 import           Network.OAuth.OAuth2 (OAuth2Token)
 import qualified Spotifyify.API       as API (Artist, ArtistSearchResult (..),
                                               Artists (..), followArtist, name,
                                               searchArtists)
 import           Spotifyify.Auth      (authenticate, initOAuth2Data)
 import           Spotifyify.Log       (LogEntry (..), writeEntry)
-import           Spotifyify.Manifest  (Artist (..), Manifest (..), name)
+import qualified Spotifyify.Manifest  as M (Artist (..), Manifest (..), name)
 import           System.IO            (Handle)
 
-performImport :: Manifest -> Handle -> IO ()
-performImport (Manifest artists) logHandle = do
+performImport :: M.Manifest -> Handle -> IO ()
+performImport (M.Manifest artists) logHandle = do
   oauth2Data <- initOAuth2Data
   oauth2Token <- authenticate oauth2Data
   sequence_ $ importArtist oauth2Token logHandle <$> artists
 
-importArtist :: OAuth2Token -> Handle -> Artist -> IO ()
-importArtist oauth logHandle artist@(Artist name albums) = do
+importArtist :: OAuth2Token -> Handle -> M.Artist -> IO ()
+importArtist oauth logHandle artist@(M.Artist name albums) = do
   result <- findArtist artist oauth
   case result of
     Just a -> do
@@ -31,13 +33,14 @@ importArtist oauth logHandle artist@(Artist name albums) = do
       putStrLn $ "Could not find artist in Spotify: " ++ unpack name
       writeEntry logHandle (LogEntry name False 0)
 
-findArtist :: Artist -> OAuth2Token -> IO (Maybe API.Artist)
+findArtist :: M.Artist -> OAuth2Token -> IO (Maybe API.Artist)
 findArtist artist oauth = searchFromOffset 0
   where
     searchFromOffset :: Int -> IO (Maybe API.Artist)
     searchFromOffset offset = searchAtOffset offset >>= handlePage
     searchAtOffset :: Int -> IO API.ArtistSearchResult
-    searchAtOffset offset = API.searchArtists (name artist) offset oauth
+    searchAtOffset offset =
+      API.searchArtists (normalise $ M.name artist) offset oauth
     findInPage :: API.ArtistSearchResult -> Maybe API.Artist
     findInPage (API.ArtistSearchResult (API.Artists [x] _ _ 1)) = Just x
     findInPage (API.ArtistSearchResult (API.Artists items _ _ total)) =
@@ -53,8 +56,10 @@ findArtist artist oauth = searchFromOffset 0
         then return Nothing -- give up
         else searchFromOffset (offset + pageSize) -- recurse
 
-matchesArtistName :: Artist -> API.Artist -> Bool
-matchesArtistName x y = name x == API.name y
+matchesArtistName :: M.Artist -> API.Artist -> Bool
+matchesArtistName x y = normalise (M.name x) == normalise (API.name y)
 
+normalise :: Text -> Text
+normalise = strip . (replace "_" ".") . toLower
 pageSize :: Int
 pageSize = 20

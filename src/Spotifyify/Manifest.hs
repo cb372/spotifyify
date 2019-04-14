@@ -32,14 +32,14 @@ instance Show Artist where
     where
       albumCount = pack $ show (length albums)
 
-buildManifest :: Path Abs Dir -> IO (Manifest)
+buildManifest :: Path Abs Dir -> IO Manifest
 buildManifest rootDir = do
   (dirs, files) <- listDir rootDir
   artists <- traverse processArtistDir dirs
   let artistsWithAlbums = filter hasAtLeastOneAlbum artists
   pure $ Manifest artistsWithAlbums
 
-processArtistDir :: Path Abs Dir -> IO (Artist)
+processArtistDir :: Path Abs Dir -> IO Artist
 processArtistDir artistDir = do
   let artistName = dirToName artistDir
   (dirs, files) <- listDir artistDir

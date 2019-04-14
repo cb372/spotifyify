@@ -48,7 +48,7 @@ run (BuildManifest rootDir outputFile) = do
   manifest <- buildManifest absRootDir
   putStrLn $ "Found " ++ show (countAlbums manifest) ++ " albums by " ++ show (countArtists manifest) ++ " artists"
   writeManifest manifest outputPath
-  putStrLn $ "Wrote manifest to file " ++ (show outputPath)
+  putStrLn $ "Wrote manifest to file " ++ show outputPath
 
 run (Import manifestFile logFile) = do
   putStrLn "Loading manifest"

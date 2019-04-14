@@ -3,10 +3,10 @@
 
 module Spotifyify.API where
 
-import Prelude hiding (id)
+import Prelude hiding (id, unwords)
 import Data.ByteString.Char8 (pack, readInt)
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Text (Text, intercalate)
+import Data.Text (Text, unwords)
 import Data.Text.Encoding (encodeUtf8)
 import Control.Concurrent (threadDelay)
 import Network.HTTP.Simple
@@ -75,17 +75,17 @@ sendRequest mkRequest oauth = do
   pure $ getResponseBody response
 
 withAuth :: OAuth2Token -> Request -> Request
-withAuth oauth req = addRequestHeader "Authorization" bearer req
+withAuth oauth = addRequestHeader "Authorization" bearer
   where
-    bearer = encodeUtf8 $ intercalate " " [ "Bearer ", (atoken . accessToken) oauth ]
+    bearer = encodeUtf8 $ unwords [ "Bearer ", (atoken . accessToken) oauth ]
 
 withRateLimiting :: IO (Response a) -> IO (Response a)
 withRateLimiting sendRequest = do
   response <- sendRequest
   case getResponseStatus response of
     s | s == status429 -> do
-      putStrLn $ "Hit the rate limiting. Sleeping for " ++ (show $ retryAfter response) ++ " seconds"
-      threadDelay $ (retryAfter response) * 1000000
+      putStrLn $ "Hit the rate limiting. Sleeping for " ++ show (retryAfter response) ++ " seconds"
+      threadDelay $ retryAfter response * 1000000
       withRateLimiting sendRequest
     _ -> return response
 

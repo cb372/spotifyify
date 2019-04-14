@@ -28,8 +28,7 @@ instance FromJSON LogEntry
 readLogFile :: Path Abs File -> IO [LogEntry]
 readLogFile path = do
   exists <- doesFileExist path
-  case exists of False -> return []
-                 True ->  readLogFile' path
+  if exists then readLogFile' path else return []
 
 -- Reads the given log file. Assumes that the file exists.
 readLogFile' :: Path Abs File -> IO [LogEntry]

@@ -13,17 +13,16 @@ performImport :: Manifest -> Handle -> IO ()
 performImport (Manifest artists) logHandle = do
   oauth2Data <- initOAuth2Data
   oauth2Token <- authenticate oauth2Data
-  sequence $ (importArtist oauth2Token logHandle) <$> artists
-  return ()
+  sequence_ $ importArtist oauth2Token logHandle <$> artists
 
 importArtist :: OAuth2Token -> Handle -> Artist -> IO ()
 importArtist oauth logHandle artist@(Artist name albums) = do
   result <- findArtist artist oauth
   case result of
     Just a -> do
-      putStrLn $ "Found artist: " ++ (unpack $ API.name a)
+      putStrLn $ "Found artist: " ++ unpack (API.name a)
       API.followArtist a oauth
-      putStrLn $ "Followed " ++ (unpack $ API.name a)
+      putStrLn $ "Followed " ++ unpack (API.name a)
       -- TODO save albums
       writeEntry logHandle (LogEntry name True (length albums))
     Nothing -> do
@@ -57,7 +56,7 @@ findArtist artist oauth = searchFromOffset 0
          else searchFromOffset (offset + pageSize) -- recurse
 
 matchesArtistName :: Artist -> API.Artist -> Bool
-matchesArtistName x y = (name x) == (API.name y)
+matchesArtistName x y = name x == API.name y
 
 pageSize :: Int
 pageSize = 20

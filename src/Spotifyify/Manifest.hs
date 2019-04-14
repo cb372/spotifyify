@@ -1,22 +1,30 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 module Spotifyify.Manifest where
 
-import GHC.Generics (Generic)
-import qualified Data.Set as S (fromList, notMember)
-import Data.Text (Text, unpack, pack)
-import Data.Yaml (ToJSON, FromJSON, toEncoding, encode, encodeFile, decodeFileThrow)
-import Data.Aeson.Types (genericToEncoding, defaultOptions)
-import System.FilePath (dropTrailingPathSeparator)
-import Path (Path, Abs, Dir, File, dirname, toFilePath)
-import Path.IO (listDir)
-import Spotifyify.Log (LogEntry, artist)
+import           Data.Aeson.Types (defaultOptions, genericToEncoding)
+import qualified Data.Set         as S (fromList, notMember)
+import           Data.Text        (Text, pack, unpack)
+import           Data.Yaml        (FromJSON, ToJSON, decodeFileThrow, encode,
+                                   encodeFile, toEncoding)
+import           GHC.Generics     (Generic)
+import           Path             (Abs, Dir, File, Path, dirname, toFilePath)
+import           Path.IO          (listDir)
+import           Spotifyify.Log   (LogEntry, artist)
+import           System.FilePath  (dropTrailingPathSeparator)
 
 type Album = Text
-data Artist = Artist { name :: Text, albums :: [Album] } deriving Generic
-data Manifest = Manifest { artists :: [Artist] } deriving Generic
+
+data Artist = Artist
+  { name   :: Text
+  , albums :: [Album]
+  } deriving (Generic)
+
+data Manifest = Manifest
+  { artists :: [Artist]
+  } deriving (Generic)
 
 instance ToJSON Artist where
   toEncoding = genericToEncoding defaultOptions
@@ -25,6 +33,7 @@ instance ToJSON Manifest where
   toEncoding = genericToEncoding defaultOptions
 
 instance FromJSON Artist
+
 instance FromJSON Manifest
 
 instance Show Artist where
@@ -56,11 +65,12 @@ countArtists (Manifest artists) = length artists
 
 countAlbums :: Manifest -> Int
 countAlbums (Manifest artists) = sum $ fmap albumsForArtist artists
-  where albumsForArtist Artist{albums} = length albums
+  where
+    albumsForArtist Artist {albums} = length albums
 
 hasAtLeastOneAlbum :: Artist -> Bool
-hasAtLeastOneAlbum Artist{albums = []} = False
-hasAtLeastOneAlbum Artist{} = True
+hasAtLeastOneAlbum Artist {albums = []} = False
+hasAtLeastOneAlbum Artist {}            = True
 
 writeManifest :: Manifest -> Path Abs File -> IO ()
 writeManifest manifest outputPath = encodeFile (toFilePath outputPath) manifest
@@ -75,4 +85,3 @@ filterArtists (Manifest artists) logs = Manifest filtered
     filtered = filter nameNotInLogs artists
     nameNotInLogs artist = S.notMember (name artist) artistNamesInLogs
     artistNamesInLogs = S.fromList $ artist <$> logs
-

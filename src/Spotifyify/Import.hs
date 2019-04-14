@@ -1,13 +1,15 @@
 module Spotifyify.Import where
 
-import Data.List (find)
-import Data.Text (Text, unpack)
-import System.IO (Handle)
-import Network.OAuth.OAuth2 (OAuth2Token)
-import Spotifyify.Manifest (Manifest(..), Artist(..), name)
-import Spotifyify.Log (LogEntry(..), writeEntry)
-import Spotifyify.Auth (initOAuth2Data, authenticate)
-import qualified Spotifyify.API as API (ArtistSearchResult(..), Artists(..), Artist, name, searchArtists, followArtist)
+import           Data.List            (find)
+import           Data.Text            (Text, unpack)
+import           Network.OAuth.OAuth2 (OAuth2Token)
+import qualified Spotifyify.API       as API (Artist, ArtistSearchResult (..),
+                                              Artists (..), followArtist, name,
+                                              searchArtists)
+import           Spotifyify.Auth      (authenticate, initOAuth2Data)
+import           Spotifyify.Log       (LogEntry (..), writeEntry)
+import           Spotifyify.Manifest  (Artist (..), Manifest (..), name)
+import           System.IO            (Handle)
 
 performImport :: Manifest -> Handle -> IO ()
 performImport (Manifest artists) logHandle = do
@@ -34,26 +36,22 @@ findArtist artist oauth = searchFromOffset 0
   where
     searchFromOffset :: Int -> IO (Maybe API.Artist)
     searchFromOffset offset = searchAtOffset offset >>= handlePage
-
     searchAtOffset :: Int -> IO API.ArtistSearchResult
     searchAtOffset offset = API.searchArtists (name artist) offset oauth
-
     findInPage :: API.ArtistSearchResult -> Maybe API.Artist
-    findInPage (API.ArtistSearchResult (API.Artists [x] _ _ 1)) =
-      Just x
+    findInPage (API.ArtistSearchResult (API.Artists [x] _ _ 1)) = Just x
     findInPage (API.ArtistSearchResult (API.Artists items _ _ total)) =
       find (matchesArtistName artist) items
-
     handlePage :: API.ArtistSearchResult -> IO (Maybe API.Artist)
-    handlePage page = case findInPage page of
-                        Just artist -> return (Just artist)
-                        Nothing -> giveUpOrContinue page
-
+    handlePage page =
+      case findInPage page of
+        Just artist -> return (Just artist)
+        Nothing     -> giveUpOrContinue page
     giveUpOrContinue :: API.ArtistSearchResult -> IO (Maybe API.Artist)
     giveUpOrContinue (API.ArtistSearchResult (API.Artists _ _ offset total)) =
       if offset + pageSize >= total
-         then return Nothing -- give up
-         else searchFromOffset (offset + pageSize) -- recurse
+        then return Nothing -- give up
+        else searchFromOffset (offset + pageSize) -- recurse
 
 matchesArtistName :: Artist -> API.Artist -> Bool
 matchesArtistName x y = name x == API.name y

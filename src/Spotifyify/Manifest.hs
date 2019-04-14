@@ -2,6 +2,29 @@
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+{-|
+  A manifest is a list of all the artists, and their albums, which you want to
+  import into your Spotify library.  The manifest is built by traversing the
+  directories under a given root directory, under the assumption that the
+  directory is structured as follows:
+
+@
+  root-dir/
+    artist name 1/
+      album name 1/
+        track1.mp3
+        ...
+      album name 2/
+        track1.mp3
+        ...
+    artist name 2/
+      album name 1/
+        ...
+@
+
+  TODO we could improve on this by attempting to read IDv3 tags from files
+  inside the directories.
+-}
 module Spotifyify.Manifest where
 
 import           Data.Aeson.Types (defaultOptions, genericToEncoding)
